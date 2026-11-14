@@ -1,0 +1,82 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.38.x'
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Create Android project
+        run: sh tool/bootstrap.sh
+
+      - name: Analyze (informational)
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Tests (informational)
+        continue-on-error: true
+        run: flutter test
+
+      - name: Build universal APK
+        run: flutter build apk --release --no-shrink
+
+      - name: Keep universal APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/CinemaxPlayer-universal.apk
+
+      - name: Build per-ABI APKs (smaller)
+        run: flutter build apk --release --no-shrink --split-per-abi
+
+      - name: Keep per-ABI APKs
+        run: |
+          for f in build/app/outputs/flutter-apk/app-*-release.apk; do
+            name="$(basename "$f" | sed 's/^app-//; s/-release//')"
+            cp "$f" "dist/CinemaxPlayer-$name"
+          done
+          ls -lh dist
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: CinemaxPlayer-APK
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Publish release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk

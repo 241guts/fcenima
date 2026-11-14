@@ -1,0 +1,27 @@
+name: cinemax_player
+description: Standalone Flutter video player module (Android Media3 / ExoPlayer engine) for Cinemax. The host passes the media source and settings through a small API.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_svg: ^2.0.10+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  assets:
+    - assets/icons/
+  plugin:
+    platforms:
+      android:
+        package: com.cinemax.cinemax_player
+        pluginClass: CinemaxPlayerPlugin
